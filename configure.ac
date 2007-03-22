@@ -44,7 +44,7 @@ AS_COMPILER_FLAG(-Wno-unused-parameter,
         wno_unused_parameter=yes,
         wno_unused_parameter=no)
 
-ifelse(stream_engine_nano_version, 0, [],
+ifelse(m4_eval(stream_engine_nano_version % 2), 0, [],
     [
         if test x$werror = xyes; then
             ERROR_CFLAGS="$ERROR_CFLAGS -Werror"
