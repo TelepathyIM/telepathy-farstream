@@ -1211,6 +1211,13 @@ tp_stream_engine_stream_go (
   priv->fs_stream = farsight_session_create_stream (
     fs_session, media_type, direction);
 
+  if (g_object_has_property (G_OBJECT (priv->fs_stream), "transmitter"))
+    {
+      g_object_set (G_OBJECT (priv->fs_stream),
+          "transmitter", "libjingle",
+          NULL);
+    }
+
   if (media_type == FARSIGHT_MEDIA_TYPE_VIDEO)
     {
       /* tell the Farsight stream to use the stream engine pipeline */
