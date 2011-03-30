@@ -1051,10 +1051,13 @@ async_method_callback_optional (TpMediaStreamHandler *proxy G_GNUC_UNUSED,
     gpointer user_data,
     GObject *weak_object)
 {
-  if (error != NULL &&
-      !(error->domain == DBUS_GERROR &&
-          error->code == G_DBUS_ERROR_UNKNOWN_METHOD))
-    async_method_callback (proxy, error, user_data, weak_object);
+  if (error == NULL)
+    return;
+
+  if (g_error_matches (error, DBUS_GERROR, G_DBUS_ERROR_UNKNOWN_METHOD))
+      return;
+
+  async_method_callback (proxy, error, user_data, weak_object);
 }
 
 static void
