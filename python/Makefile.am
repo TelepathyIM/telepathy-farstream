@@ -29,9 +29,7 @@ tpfarsight_la_LIBADD =					\
 	$(PYTPFARSIGHT_LIBS)				\
 	$(top_builddir)/telepathy-farsight/libtelepathy-farsight.la
 
-tpfarsight_la_LDFLAGS =					\
-	`python-config --libs`				\
-	-module -avoid-version
+tpfarsight_la_LDFLAGS =	-module -avoid-version
 
 pytpfarsight.c: pytpfarsight.override pytpfarsight.defs
 	$(PYTHON) $(top_srcdir)/python/codegen/codegen.py	\
