@@ -2353,27 +2353,24 @@ _tf_stream_bus_message (TfStream *stream,
 
       value = gst_structure_get_value (s, "codec");
       codec = g_value_get_boxed (value);
-      g_object_get (fssession, "current-send-codec", &objcodec, NULL);
 
+      g_object_get (fssession, "current-send-codec", &objcodec, NULL);
       if (!fs_codec_are_equal (objcodec, codec))
         {
           fs_codec_destroy (objcodec);
           return TRUE;
         }
+      fs_codec_destroy (objcodec);
 
       value = gst_structure_get_value (s, "secondary-codecs");
       secondary_codecs = g_value_get_boxed (value);
 
 
-      if (codec)
-        DEBUG (stream, "Send codec changed: " FS_CODEC_FORMAT,
-            FS_CODEC_ARGS (codec));
+      DEBUG (stream, "Send codec changed: " FS_CODEC_FORMAT,
+          FS_CODEC_ARGS (codec));
 
       cb_fs_send_codec_changed (stream, codec, secondary_codecs);
 
-      if (codec)
-        fs_codec_destroy (codec);
-      fs_codec_list_destroy (secondary_codecs);
       return TRUE;
     }
   else if (gst_structure_has_name (s, "farsight-component-state-changed"))
