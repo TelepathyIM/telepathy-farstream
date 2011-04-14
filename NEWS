@@ -1,3 +1,12 @@
+telepathy-farsight 0.0.17 (12 Apr 2011)
+=======================================
+- Implement StartSoundTelephonyEvent and StartNamedTelephonyEvent
+- Require telepathy-glib 0.13.4
+- Fix leak with Supported + Update
+- Use g_error_matches
+- Ignore NotImplemented errors for optional methods
+- Don't link against libpython
+
 telepathy-farsight 0.0.16 (22 Dec 2010)
 =======================================
 - Emit the NewActiveTransportPair signal
