@@ -1,3 +1,12 @@
+telepathy-farsight 0.0.18 (11 May 2011)
+=======================================
+- Add support for FeedbackMessages and RtpHeaderExtensions
+- Set the default codec preferences from farsight2, can still be
+ overriden with the stream-get-config signal or during the "stream-added"
+ signal handler
+- Set the default RTP Header extensions from farsight2, can be overridden during
+  the "stream-added" signal
+
 telepathy-farsight 0.0.17 (12 Apr 2011)
 =======================================
 - Implement StartSoundTelephonyEvent and StartNamedTelephonyEvent
