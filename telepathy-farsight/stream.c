@@ -104,11 +104,14 @@ struct _TfStreamPrivate
 
   gboolean send_local_codecs;
   gboolean send_supported_codecs;
+  gboolean ready_called;
 
   guint tos;
 
   GHashTable *feedback_messages;
   GPtrArray *header_extensions;
+
+  gboolean block_ready;
 
   GStaticMutex mutex;
   guint idle_connected_id; /* Protected by mutex */
@@ -151,7 +154,8 @@ enum
   PROP_SINK_PAD,
   PROP_LOCAL_PREFERENCES,
   PROP_TOS,
-  PROP_RESOURCES
+  PROP_RESOURCES,
+  PROP_BLOCK_READY
 };
 
 static void get_all_properties_cb (TpProxy *proxy,
@@ -313,6 +317,9 @@ tf_stream_get_property (GObject    *object,
     case PROP_RESOURCES:
       g_value_set_uint (value, self->priv->has_resource);
       break;
+    case PROP_BLOCK_READY:
+      g_value_set_boolean (value, self->priv->block_ready);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -364,6 +371,20 @@ tf_stream_set_property (GObject      *object,
       self->priv->tos = g_value_get_uint (value);
       if (self->priv->fs_session)
         g_object_set_property (G_OBJECT (self->priv->fs_session), "tos", value);
+      break;
+    case PROP_BLOCK_READY:
+      if (self->priv->ready_called)
+        {
+          WARNING (self,
+              "Trying to block the Ready() call after it has happenned");
+        }
+      else
+        {
+          gboolean old_block_ready = self->priv->block_ready;
+          self->priv->block_ready = g_value_get_boolean (value);
+          if (old_block_ready && !self->priv->block_ready)
+            _tf_stream_try_sending_codecs (self);
+        }
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -623,6 +644,13 @@ tf_stream_class_init (TfStreamClass *klass)
           TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
           TP_MEDIA_STREAM_DIRECTION_NONE,
           G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (object_class, PROP_BLOCK_READY,
+      g_param_spec_boolean ("block-ready",
+          "Blocks calling Ready on the StreamHandler",
+          "Blocks calling Ready on the StreamHandler",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   /**
    * TfStream::closed:
@@ -2839,6 +2867,9 @@ _tf_stream_try_sending_codecs (TfStream *stream)
   GHashTable *feedback_messages = NULL;
   GPtrArray *header_extensions = NULL;
 
+  if (stream->priv->block_ready)
+    return;
+
   DEBUG (stream, "called (send_local:%d send_supported:%d)",
       stream->priv->send_local_codecs, stream->priv->send_supported_codecs);
 
@@ -2882,6 +2913,7 @@ _tf_stream_try_sending_codecs (TfStream *stream)
           -1, tpcodecs, async_method_callback, "Media.StreamHandler::Ready",
           NULL, (GObject *) stream);
       stream->priv->send_local_codecs = FALSE;
+      stream->priv->ready_called = TRUE;
       goto out;
     }
 
