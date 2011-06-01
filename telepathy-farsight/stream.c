@@ -450,6 +450,7 @@ tf_stream_dispose (GObject *object)
       tf_stream_free_resource (stream,
           TP_MEDIA_STREAM_DIRECTION_RECEIVE);
 
+      g_object_run_dispose (G_OBJECT (priv->fs_stream));
       g_object_unref (priv->fs_stream);
 
       tf_stream_free_resource (stream,
@@ -460,6 +461,7 @@ tf_stream_dispose (GObject *object)
 
   if (priv->fs_session)
     {
+      g_object_run_dispose (G_OBJECT (priv->fs_session));
       g_object_unref (priv->fs_session);
       priv->fs_session = NULL;
     }
