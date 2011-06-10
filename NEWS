@@ -1,3 +1,11 @@
+telepathy-farsight 0.0.19 (10 Jun 2011)
+=======================================
+- Set the default RTP extension preferences in the right order
+- Added a "block-ready" property to be able to delay accepting the call until
+ some condition has been met
+- Only call CodecsUpdated() if codecs that actually need to be transmitted
+ has been changed
+
 telepathy-farsight 0.0.18 (11 May 2011)
 =======================================
 - Add support for FeedbackMessages and RtpHeaderExtensions
