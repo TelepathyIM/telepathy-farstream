@@ -307,6 +307,10 @@ _tf_call_stream_push_remote_candidates (TfCallStream *self,
   gboolean ret;
   GError *error = NULL;
 
+  /* If there are no candidates, nothing to do, just return */
+  if (fscandidates == NULL)
+    return;
+
   switch (self->transport_type)
     {
     case TP_STREAM_TRANSPORT_TYPE_RAW_UDP:
