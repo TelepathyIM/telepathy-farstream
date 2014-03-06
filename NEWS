@@ -1,3 +1,11 @@
+telepathy-farstream 0.6.1 (6 Mar 2014)
+=======================================
+
+- Fix build with newer telepathy-glib branches
+- Fix build with automake 1.13
+- Improve configure.ac with AS_IF
+- Fix calls with standard ICE-UDP (against Gajim)
+
 telepathy-farstream 0.6.0 (25 Sep 2012)
 =======================================
 
