@@ -1,3 +1,8 @@
+telepathy-farstream 0.6.2 (25 Aug 2014)
+=======================================
+
+- call-stream: add mising 'break' in switch block (fd.o#79006, Guillaume)
+
 telepathy-farstream 0.6.1 (6 Mar 2014)
 =======================================
 
