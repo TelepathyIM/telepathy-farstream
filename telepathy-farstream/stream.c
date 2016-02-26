@@ -1855,7 +1855,7 @@ set_stream_sending (TpMediaStreamHandler *proxy G_GNUC_UNUSED,
           "direction", current_direction & ~(FS_DIRECTION_SEND),
           NULL);
 
-      tf_stream_free_resource (self, FS_DIRECTION_SEND);
+      tf_stream_free_resource (self, TP_MEDIA_STREAM_DIRECTION_SEND);
 
       self->priv->desired_direction &= ~(FS_DIRECTION_SEND);
     }
@@ -1952,7 +1952,8 @@ set_stream_held (TpMediaStreamHandler *proxy G_GNUC_UNUSED,
     }
   else
     {
-      FsStreamDirection desired_direction = self->priv->desired_direction;
+      TpMediaStreamDirection desired_direction =
+          (TpMediaStreamDirection) self->priv->desired_direction;
 
       if (tf_stream_request_resource (self, desired_direction))
         {
