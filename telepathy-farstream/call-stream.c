@@ -1430,6 +1430,7 @@ static GValueArray *
 fscandidate_to_tpcandidate (TfCallStream *stream, FsCandidate *candidate)
 {
   GHashTable *extra_info;
+  GValueArray *tpcandidate;
 
   extra_info = tp_asv_new (NULL, NULL);
 
@@ -1464,12 +1465,16 @@ fscandidate_to_tpcandidate (TfCallStream *stream, FsCandidate *candidate)
     }
 
 
-  return tp_value_array_build (4,
+  tpcandidate = tp_value_array_build (4,
       G_TYPE_UINT, candidate->component_id,
       G_TYPE_STRING, candidate->ip,
       G_TYPE_UINT, candidate->port,
       TP_HASH_TYPE_CANDIDATE_INFO, extra_info,
       G_TYPE_INVALID);
+
+  g_hash_table_unref (extra_info);
+
+  return tpcandidate;
 }
 
 static void

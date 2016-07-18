@@ -1194,6 +1194,7 @@ got_content_media_properties (TpProxy *proxy, GHashTable *properties,
           g_warning ("Could not set codec preference: %s", myerror->message);
           g_clear_error (&myerror);
         }
+      g_list_free_full (codec_prefs, (GDestroyNotify)fs_codec_destroy);
     }
 
   /* First complete so we get signalled and the preferences can be set, then
@@ -1775,7 +1776,7 @@ fscodecs_to_media_descriptions (TfCallContent *self, GList *codecs)
   GPtrArray *tpcodecs = g_ptr_array_new ();
   GList *item;
   GList *resend_codecs = NULL;
-  GHashTable *retval;
+  GHashTable *retval = NULL;
   GPtrArray *rtp_hdrext = NULL;
   GHashTable *rtcp_fb = NULL;
   GPtrArray *interfaces;
@@ -1785,7 +1786,7 @@ fscodecs_to_media_descriptions (TfCallContent *self, GList *codecs)
         self->last_sent_codecs, codecs);
 
   if (!self->current_media_description && !resend_codecs)
-    return NULL;
+    goto out;
 
   if ((self->current_media_description && self->current_has_rtp_hdrext)
       || self->has_rtp_hdrext)
@@ -1934,6 +1935,8 @@ fscodecs_to_media_descriptions (TfCallContent *self, GList *codecs)
       G_TYPE_STRV, interfaces->pdata);
   g_ptr_array_free (interfaces, FALSE);
 
+out:
+  g_ptr_array_unref (tpcodecs);
   return retval;
 }
 
