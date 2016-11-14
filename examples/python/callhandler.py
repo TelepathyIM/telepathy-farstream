@@ -15,9 +15,9 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-import gobject
+from gi.repository import GObject
 # Need gio so GAsyncInitialbe is known
-import gio
+from gi.repository import Gio
 
 import dbus
 from dbus.mainloop.glib import DBusGMainLoop
@@ -110,7 +110,7 @@ class CallHandler(dbus.service.Object, telepathy.server.DBusProperties):
             self.bus, conn, channel, properties);
 
 if __name__ == '__main__':
-    gobject.threads_init()
-    loop = gobject.MainLoop()
+    GObject.threads_init()
+    loop = GObject.MainLoop()
     CallHandler(dbus.SessionBus())
     loop.run()

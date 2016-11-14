@@ -19,13 +19,13 @@
 
 import dbus
 import dbus.glib
-import gobject
+from gi.repository import GObject
 import sys
 from glib import GError
 
 import pygst
-pygst.require("0.10")
-import gst
+pyGst.require("0.10")
+from gi.repository import Gst
 
 import tpfarstream
 import farstream
@@ -56,7 +56,7 @@ class CallChannel:
         self.obj.connect_to_signal ("CallStateChanged",
             self.state_changed_cb, dbus_interface=CHANNEL_TYPE_CALL)
 
-        self.pipeline = gst.Pipeline()
+        self.pipeline = Gst.Pipeline()
         self.pipeline.get_bus().add_watch(self.async_handler)
 
         self.notifier = notifier = farstream.ElementAddedNotifier()
@@ -90,7 +90,7 @@ class CallChannel:
         # close and cleanup
         self.obj.Close(dbus_interface=CHANNEL_INTERFACE)
 
-        self.pipeline.set_state (gst.STATE_NULL)
+        self.pipeline.set_state (Gst.State.NULL)
         self.pipeline = None
 
         self.tfchannel = None
@@ -101,7 +101,7 @@ class CallChannel:
             self.tfchannel.bus_message(message)
         return True
 
-        self.pipeline = gst.Pipeline()
+        self.pipeline = Gst.Pipeline()
 
     def tpfs_created (self, source, result):
         tfchannel = self.tfchannel = source.new_finish(result)
@@ -112,13 +112,13 @@ class CallChannel:
     def src_pad_added (self, content, handle, stream, pad, codec):
         type = content.get_property ("media-type")
         if type == farstream.MEDIA_TYPE_AUDIO:
-            sink = gst.parse_bin_from_description("audioconvert ! audioresample ! audioconvert ! autoaudiosink", True)
+            sink = Gst.parse_bin_from_description("audioconvert ! audioresample ! audioconvert ! autoaudiosink", True)
         elif type == farstream.MEDIA_TYPE_VIDEO:
-            sink = gst.parse_bin_from_description("ffmpegcolorspace ! videoscale ! autovideosink", True)
+            sink = Gst.parse_bin_from_description("ffmpegcolorspace ! videoscale ! autovideosink", True)
 
         self.pipeline.add(sink)
         pad.link(sink.get_pad("sink"))
-        sink.set_state(gst.STATE_PLAYING)
+        sink.set_state(Gst.State.PLAYING)
 
     def get_codec_config (self, media_type):
         if media_type == farstream.MEDIA_TYPE_VIDEO:
@@ -164,17 +164,17 @@ class CallChannel:
         content.connect ("src-pad-added", self.src_pad_added)
 
         if mtype == farstream.MEDIA_TYPE_AUDIO:
-            src = gst.parse_bin_from_description("audiotestsrc is-live=1 ! " \
+            src = Gst.parse_bin_from_description("audiotestsrc is-live=1 ! " \
                 "queue", True)
         elif mtype == farstream.MEDIA_TYPE_VIDEO:
-            src = gst.parse_bin_from_description("videotestsrc is-live=1 ! " \
+            src = Gst.parse_bin_from_description("videotestsrc is-live=1 ! " \
                 "capsfilter caps=video/x-raw-yuv,width=320,height=240", True)
 
         self.pipeline.add(src)
         src.get_pad("src").link(sinkpad)
-        src.set_state(gst.STATE_PLAYING)
+        src.set_state(Gst.State.PLAYING)
 
     def conference_added (self, channel, conference):
         self.pipeline.add(conference)
-        self.pipeline.set_state(gst.STATE_PLAYING)
+        self.pipeline.set_state(Gst.State.PLAYING)
 

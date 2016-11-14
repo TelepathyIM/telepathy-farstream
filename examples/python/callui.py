@@ -17,13 +17,12 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-import gobject
-gobject.threads_init()
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import GObject, Gtk, Gdk
 
-import pygtk
-import gtk
-
-gtk.gdk.threads_init()
+GObject.threads_init()
+Gdk.threads_init()
 
 import dbus
 from dbus.mainloop.glib import DBusGMainLoop
@@ -143,78 +142,78 @@ class Account:
 
         return len ([c for c in classes if c[0] == self.CALL_CLASS]) > 0
 
-class UI(gtk.Window):
+class UI(Gtk.Window):
     WIDTH=240
     HEIGHT=-1
     def __init__ (self, bus):
-        gtk.Window.__init__(self)
-        self.connect('destroy', lambda x: gtk.main_quit())
+        GObject.GObject.__init__(self)
+        self.connect('destroy', lambda x: Gtk.main_quit())
         self.set_resizable(False)
         self.set_size_request(self.WIDTH, self.HEIGHT)
 
-        vbox = gtk.VBox(False, 3)
+        vbox = Gtk.VBox(False, 3)
         self.add(vbox)
 
         # call type combo box
-        self.type_store = gtk.ListStore (
-            gobject.TYPE_STRING,
-            gobject.TYPE_UINT)
+        self.type_store = Gtk.ListStore (
+            GObject.TYPE_STRING,
+            GObject.TYPE_UINT)
 
         self.type_store.append (("1-to-1", CONNECTION_HANDLE_TYPE_CONTACT))
         self.type_store.append (("Conference",
             CONNECTION_HANDLE_TYPE_ROOM))
 
-        self.type_combo = combobox = gtk.ComboBox (self.type_store)
-        vbox.pack_start(combobox, False)
+        self.type_combo = combobox = Gtk.ComboBox.new_with_model (self.type_store)
+        vbox.pack_start(combobox, False, False, 0)
 
-        renderer = gtk.CellRendererText()
+        renderer = Gtk.CellRendererText()
         combobox.pack_start(renderer, True)
-        combobox.set_attributes(renderer, text=0)
+        combobox.add_attribute(renderer, "text", 0)
         combobox.set_active (0)
 
         # account combo box
-        self.store = gtk.ListStore (gobject.TYPE_STRING,
-                gobject.TYPE_BOOLEAN,
-                gobject.TYPE_PYOBJECT)
+        self.store = Gtk.ListStore (GObject.TYPE_STRING,
+                GObject.TYPE_BOOLEAN,
+                GObject.TYPE_PYOBJECT)
         self.store.set_sort_func(0,
-            (lambda m, i0, i1:
+            (lambda m, i0, i1, data:
              { True: -1, False: 1}[m.get(i0, 0) < m.get(i1, 0)] ))
-        self.store.set_sort_column_id(0, gtk.SORT_ASCENDING)
+        self.store.set_sort_column_id(0, Gtk.SortType.ASCENDING)
 
         f = self.store.filter_new()
         f.set_visible_func(self.filter_visible)
-        self.account_combo = combobox = gtk.ComboBox(f)
-        vbox.pack_start(combobox, False)
+        self.account_combo = combobox = Gtk.ComboBox(model=f)
+        vbox.pack_start(combobox, False, False, 0)
 
-        renderer = gtk.CellRendererText()
+        renderer = Gtk.CellRendererText()
         combobox.pack_start(renderer, True)
-        combobox.set_attributes(renderer, text=0)
+        combobox.add_attribute(renderer, "text", 0)
         combobox.connect('changed', self.account_selected)
 
         # contact entry box
-        self.contact_store = gtk.ListStore(gobject.TYPE_STRING)
+        self.contact_store = Gtk.ListStore(GObject.TYPE_STRING)
 
-        completion = gtk.EntryCompletion ()
+        completion = Gtk.EntryCompletion ()
         completion.set_model(self.contact_store)
         completion.set_text_column(0)
 
         self.contact_store.set_sort_func(0, self.contact_sort)
-        self.contact_store.set_sort_column_id(0, gtk.SORT_ASCENDING)
+        self.contact_store.set_sort_column_id(0, Gtk.SortType.ASCENDING)
 
-        self.contact_combo = combobox = gtk.ComboBoxEntry(self.contact_store)
-        combobox.get_child().set_completion(completion)
+        self.contact_combo = combobox = Gtk.Entry()
+        combobox.set_completion(completion)
 
-        vbox.pack_start(combobox, False)
+        vbox.pack_start(combobox, False, False, 0)
 
-        bbox = gtk.HButtonBox()
-        bbox.set_layout(gtk.BUTTONBOX_END)
+        bbox = Gtk.HButtonBox()
+        bbox.set_layout(Gtk.ButtonBoxStyle.END)
         vbox.pack_start(bbox, True, False, 3)
 
-        call = gtk.Button("Audio call")
+        call = Gtk.Button("Audio call")
         call.connect("clicked", self.start_call)
         bbox.add(call)
 
-        call = gtk.Button("Video call")
+        call = Gtk.Button("Video call")
         call.connect("clicked",
             lambda button: self.start_call(button, video=True))
         bbox.add(call)
@@ -239,13 +238,13 @@ class UI(gtk.Window):
         CallChannelRequest (self.bus, account.path, contact,
             audio=audio, video=video, calltype=calltype)
 
-    def contact_sort (self, model, i0, i1):
+    def contact_sort (self, model, i0, i1, data):
         if model.get(i0, 0)[0] < model.get(i1, 0)[0]:
             return -1
         else:
             return 0
 
-    def filter_visible(self, model, titer):
+    def filter_visible(self, model, titer, data):
         return model.get(titer, 1)[0]
 
     def account_selected (self, combobox):
@@ -263,7 +262,7 @@ class UI(gtk.Window):
     def bail (self, *args):
         print "BAILING"
         print args
-        gtk.main_quit()
+        Gtk.main_quit()
 
     def got_accounts(self, accounts):
         for x in accounts:
@@ -282,4 +281,4 @@ if __name__ == '__main__':
     bus = dbus.SessionBus()
 
     UI(bus)
-    gtk.main()
+    Gtk.main()
