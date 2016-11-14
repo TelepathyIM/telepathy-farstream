@@ -17,78 +17,55 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-import dbus
-import dbus.glib
-from gi.repository import GObject
+import gi
+gi.require_version('Gst', '1.0')
+gi.require_version('TelepathyGLib', '0.12')
+gi.require_version('TelepathyFarstream', '0.6')
+from gi.repository import GLib, GObject, Gst, TelepathyFarstream, Farstream, TelepathyGLib
+
 import sys
-from glib import GError
 
-import pygst
-pyGst.require("0.10")
-from gi.repository import Gst
+Gst.init(sys.argv)
 
-import tpfarstream
-import farstream
 from util import *
-import gc
-
-from telepathy.client.channel import Channel
-from telepathy.constants import (
-    CONNECTION_HANDLE_TYPE_NONE, CONNECTION_HANDLE_TYPE_CONTACT,
-    CONNECTION_STATUS_CONNECTED, CONNECTION_STATUS_DISCONNECTED,
-    MEDIA_STREAM_STATE_CONNECTED
-    )
-from telepathy.interfaces import (
-    CHANNEL_INTERFACE, CONN_INTERFACE,
-    CONNECTION_INTERFACE_REQUESTS,
-    CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
-    CLIENT)
-
-from constants import *
 
 class CallChannel:
-    def __init__ (self, bus, connection, object_path, properties):
-        self.bus = bus
+    def __init__ (self, connection, channel):
         self.conn = connection
+        self.channel = channel
         self.tfchannel = None
 
-        self.obj = self.bus.get_object (self.conn.service_name, object_path)
-        self.obj.connect_to_signal ("CallStateChanged",
-            self.state_changed_cb, dbus_interface=CHANNEL_TYPE_CALL)
+        channel.connect ("state-changed", self.state_changed_cb)
 
-        self.pipeline = Gst.Pipeline()
-        self.pipeline.get_bus().add_watch(self.async_handler)
+        self.pipeline = Gst.Pipeline(None)
+        self.pipeline.get_bus().add_signal_watch()
+        self.pipeline.get_bus().connect ("message", self.async_handler)
 
-        self.notifier = notifier = farstream.ElementAddedNotifier()
+        self.notifier = notifier = Farstream.ElementAddedNotifier()
         notifier.set_properties_from_file("element-properties")
         notifier.add(self.pipeline)
 
-        tpfarstream.tf_channel_new_async (connection.service_name,
-            connection.object_path, object_path, self.tpfs_created)
+        TelepathyFarstream.Channel.new_async (channel, self.tpfs_created)
 
-    def state_changed_cb(self, state, flags, reason, details):
+    def state_changed_cb(self, channel, state, flags, reason, details):
         print "* StateChanged:\n State: %s (%d)\n Flags: %s" % (
             call_state_to_s (state), state, call_flags_to_s (flags))
-
-        print "\tReason: actor: %d reason: %d dbus_reason: '%s'" % (
-            reason[0], reason[1], reason[2])
-
+        print "\tReason: " + reason.message,
         print '\tDetails:'
         for key, value in details.iteritems():
             print "\t  %s: %s" % (key, value)
         else:
             print '\t  None'
 
-        if state == CALL_STATE_ENDED:
+        if state == TelepathyGLib.CallState.ENDED:
             self.close()
 
-    def accept (self):
-        self.obj.Accept(dbus_interface=CHANNEL_TYPE_CALL)
 
     def close (self):
         print "Closing the channel"
+
         # close and cleanup
-        self.obj.Close(dbus_interface=CHANNEL_INTERFACE)
+        self.channel.close_async()
 
         self.pipeline.set_state (Gst.State.NULL)
         self.pipeline = None
@@ -101,53 +78,72 @@ class CallChannel:
             self.tfchannel.bus_message(message)
         return True
 
-        self.pipeline = Gst.Pipeline()
-
     def tpfs_created (self, source, result):
-        tfchannel = self.tfchannel = source.new_finish(result)
+        tfchannel = self.tfchannel = source.new_finish(source, result)
         tfchannel.connect ("fs-conference-added", self.conference_added)
         tfchannel.connect ("content-added", self.content_added)
 
 
     def src_pad_added (self, content, handle, stream, pad, codec):
         type = content.get_property ("media-type")
-        if type == farstream.MEDIA_TYPE_AUDIO:
+        if type == Farstream.MediaType.AUDIO:
             sink = Gst.parse_bin_from_description("audioconvert ! audioresample ! audioconvert ! autoaudiosink", True)
-        elif type == farstream.MEDIA_TYPE_VIDEO:
-            sink = Gst.parse_bin_from_description("ffmpegcolorspace ! videoscale ! autovideosink", True)
+        elif type == Farstream.MediaType.VIDEO:
+            sink = Gst.parse_bin_from_description("videoconvert ! videoscale ! autovideosink", True)
 
         self.pipeline.add(sink)
-        pad.link(sink.get_pad("sink"))
+        pad.link(sink.get_static_pad("sink"))
         sink.set_state(Gst.State.PLAYING)
 
     def get_codec_config (self, media_type):
-        if media_type == farstream.MEDIA_TYPE_VIDEO:
-            codecs = [ farstream.Codec(farstream.CODEC_ID_ANY, "H264",
-                farstream.MEDIA_TYPE_VIDEO, 0) ]
+        if media_type == Farstream.MediaType.VIDEO:
+            codecs = [ farstream.Codec.new(farstream.CODEC_ID_ANY, "VP8",
+                                           Farstream.MediaType.VIDEO, 0),
+                       farstream.Codec.new(farstream.CODEC_ID_ANY, "H264",
+                                           Farstream.MediaType.VIDEO, 0) ]
             if self.conn.GetProtocol() == "sip" :
-                codecs += [ farstream.Codec(farstream.CODEC_ID_DISABLE, "THEORA",
-                                        farstream.MEDIA_TYPE_VIDEO, 0) ]
+                codecs += [ Farstream.Codec.new(Farstream.CODEC_ID_DISABLE, "THEORA",
+                                        Farstream.MediaType.VIDEO, 0) ]
             else:
-                codecs += [ farstream.Codec(farstream.CODEC_ID_ANY, "THEORA",
-                                        farstream.MEDIA_TYPE_VIDEO, 0) ]
+                codecs += [ Farstream.Codec.new(Farstream.CODEC_ID_ANY, "THEORA",
+                                        Farstream.MediaType.VIDEO, 0) ]
             codecs += [
-                farstream.Codec(farstream.CODEC_ID_ANY, "H263",
-                                        farstream.MEDIA_TYPE_VIDEO, 0),
-                farstream.Codec(farstream.CODEC_ID_DISABLE, "DV",
-                                        farstream.MEDIA_TYPE_VIDEO, 0),
-                farstream.Codec(farstream.CODEC_ID_ANY, "JPEG",
-                                        farstream.MEDIA_TYPE_VIDEO, 0),
-                farstream.Codec(farstream.CODEC_ID_ANY, "MPV",
-                                       farstream.MEDIA_TYPE_VIDEO, 0),
+                farstream.Codec.new.new(Farstream.CODEC_ID_ANY, "H263",
+                                        Farstream.MediaType.VIDEO, 0),
+                farstream.Codec.new(Farstream.CODEC_ID_DISABLE, "DV",
+                                    Farstream.MediaType.VIDEO, 0),
+                farstream.Codec.new(Farstream.CODEC_ID_ANY, "JPEG",
+                                    Farstream.MediaType.VIDEO, 0),
+                farstream.Codec.new(Farstream.CODEC_ID_ANY, "MPV",
+                                    Farstream.MediaType.VIDEO, 0),
             ]
 
         else:
             codecs = [
-                farstream.Codec(farstream.CODEC_ID_ANY, "SPEEX",
-                    farstream.MEDIA_TYPE_AUDIO, 16000 ),
-                farstream.Codec(farstream.CODEC_ID_ANY, "SPEEX",
-                    farstream.MEDIA_TYPE_AUDIO, 8000 )
-                ]
+                Farstream.Codec.new(Farstream.CODEC_ID_ANY, "OPUS",
+                                    Farstream.MediaType.AUDIO, 0 ),
+                Farstream.Codec.new(Farstream.CODEC_ID_ANY, "SPEEX",
+                                    Farstream.MediaType.AUDIO, 16000 ),
+                Farstream.Codec.new(Farstream.CODEC_ID_ANY, "SPEEX",
+                                    Farstream.MediaType.AUDIO, 8000 ),
+                Farstream.Codec.new(Farstream.CODEC_ID_DISABLE, "G722",
+                                    Farstream.MediaType.AUDIO, 0 ),
+                Farstream.Codec.new(Farstream.CODEC_ID_DISABLE, "G726-16",
+                                    Farstream.MediaType.AUDIO, 0 ),
+                Farstream.Codec.new(Farstream.CODEC_ID_DISABLE, "L16",
+                                    Farstream.MediaType.AUDIO, 0 ),
+                Farstream.Codec.new(Farstream.CODEC_ID_DISABLE, "AMR",
+                                    Farstream.MediaType.AUDIO, 0 ),
+                Farstream.Codec.new(Farstream.CODEC_ID_DISABLE, "SIREN",
+                                    Farstream.MediaType.AUDIO, 0 ),
+                Farstream.Codec.new(Farstream.CODEC_ID_DISABLE, "MPA",
+                                    Farstream.MediaType.AUDIO, 0 ),
+                Farstream.Codec.new(Farstream.CODEC_ID_DISABLE, "MPA-ROBUST",
+                                    Farstream.MediaType.AUDIO, 0 ),
+                Farstream.Codec.new(Farstream.CODEC_ID_DISABLE,
+                                    "X-MP3-DRAFT-00",
+                                    Farstream.MediaType.AUDIO, 0 )
+            ]
         return codecs
 
     def content_added(self, channel, content):
@@ -157,21 +153,20 @@ class CallChannel:
         prefs = self.get_codec_config (mtype)
         if prefs != None:
             try:
-                content.set_codec_preferences(prefs)
-            except GError, e:
+                content.props.fs_session.set_codec_preferences(prefs)
+            except GLib.GError, e:
                 print e.message
 
         content.connect ("src-pad-added", self.src_pad_added)
 
-        if mtype == farstream.MEDIA_TYPE_AUDIO:
-            src = Gst.parse_bin_from_description("audiotestsrc is-live=1 ! " \
-                "queue", True)
-        elif mtype == farstream.MEDIA_TYPE_VIDEO:
+        if mtype == Farstream.MediaType.AUDIO:
+            src = Gst.parse_bin_from_description("audiotestsrc is-live=1", True)
+        elif mtype == Farstream.MediaType.VIDEO:
             src = Gst.parse_bin_from_description("videotestsrc is-live=1 ! " \
                 "capsfilter caps=video/x-raw-yuv,width=320,height=240", True)
 
         self.pipeline.add(src)
-        src.get_pad("src").link(sinkpad)
+        src.get_static_pad("src").link(sinkpad)
         src.set_state(Gst.State.PLAYING)
 
     def conference_added (self, channel, conference):
