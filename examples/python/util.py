@@ -21,8 +21,10 @@ def call_state_to_s(state):
     return {
         CALL_STATE_UNKNOWN: 'Unknown',
         CALL_STATE_PENDING_INITIATOR: 'Pending Initiator',
-        CALL_STATE_PENDING_RECEIVER: 'Pending Receiver',
+        CALL_STATE_INITIALISING: 'Initialising',
+        CALL_STATE_INITIALISED: 'Initialised',
         CALL_STATE_ACCEPTED: 'Accepted',
+        CALL_STATE_ACTIVE: 'Active',
         CALL_STATE_ENDED: 'Ended'
     }[state]
 
