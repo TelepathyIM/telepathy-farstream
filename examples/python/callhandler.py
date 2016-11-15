@@ -23,8 +23,13 @@ from constants import *
 
 from callchannel import CallChannel
 
-class CallHandler:
+class CallHandler(GObject.Object):
+    __gsignals__ = {
+        'new-channel' : (GObject.SIGNAL_RUN_LAST, None, (object,))
+        }
+
     def __init__(self, bus_name = 'CallDemo'):
+        GObject.Object.__init__(self)
         TelepathyGLib.debug_set_flags("all")
         am = TelepathyGLib.AccountManager.dup()
         self.handler = handler = TelepathyGLib.SimpleHandler.new_with_am(
@@ -43,6 +48,7 @@ class CallHandler:
                             requests_satisfied, user_action_time, context):
         assert len(channels) == 1
         cchannel = CallChannel(conn, channels[0])
+        self.emit("new-channel", channels[0])
         context.accept()
         channels[0].accept_async(None)
 
