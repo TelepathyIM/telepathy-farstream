@@ -1773,7 +1773,7 @@ find_codec (GList *codecs, FsCodec *codec)
 static GHashTable *
 fscodecs_to_media_descriptions (TfCallContent *self, GList *codecs)
 {
-  GPtrArray *tpcodecs = g_ptr_array_new ();
+  GPtrArray *tpcodecs = g_ptr_array_new_with_free_func ((GDestroyNotify) g_value_array_free);
   GList *item;
   GList *resend_codecs = NULL;
   GHashTable *retval = NULL;
