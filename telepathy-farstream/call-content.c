@@ -2213,16 +2213,19 @@ tf_call_content_error_literal (TfCallContent *self,
     const gchar *detailed_reason,
     const gchar *message)
 {
+  GValueArray *array;
+
   g_debug ("Content error: %s", message);
-  tp_cli_call_content_interface_media_call_fail (
-      self->proxy, -1,
-      tp_value_array_build (4,
+  array = tp_value_array_build (4,
           G_TYPE_UINT, 0,
           G_TYPE_UINT, reason,
           G_TYPE_STRING, detailed_reason,
           G_TYPE_STRING, message,
-          G_TYPE_INVALID),
+          G_TYPE_INVALID);
+  tp_cli_call_content_interface_media_call_fail (
+      self->proxy, -1, array,
       NULL, NULL, NULL, NULL);
+  tp_value_array_free (array);
 }
 
 
